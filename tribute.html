@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Illias — Tribute</title>
+<meta name="description" content="Illias — a tribute, told in two leaves of an illuminated book.">
+<link rel="stylesheet" href="cursors.css">
+<link rel="preload" as="image" href="tribute/page.jpg">
+<style>
+@font-face {
+  font-family: "Olde English";
+  src: url("tribute/olde-english.woff") format("woff");
+  font-weight: 400; font-style: normal; font-display: block;
+}
+/* ------------------------------------------------------------------
+   ILLIAS — tribute
+   Two leaves of a manuscript. The lady speaks, the leaf turns,
+   the knight answers. Same pigments as the landing page.
+------------------------------------------------------------------- */
+:root {
+  --bark:   #0b0f0c;
+  --vellum: #e9dec3;
+  --ink:    #2b1509;
+  --minium: #b92a18;
+  --scribe: "Olde English", "Old English Text MT", "Luminari", "Apple Chancery", fantasy, serif;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; background: var(--bark); overflow: hidden; }
+body {
+  font-family: var(--scribe); color: var(--vellum); -webkit-font-smoothing: antialiased;
+  display: grid; place-items: center;
+  background: radial-gradient(ellipse 80% 70% at 50% 45%, #1b1a12, var(--bark) 75%);
+}
+
+/* ---------- the leaf ---------- */
+.stage {
+  position: relative; container-type: size;
+  width: min(100vw - 32px, (100vh - 132px) * 16 / 9); aspect-ratio: 16 / 9;
+  user-select: none; -webkit-user-select: none;
+  opacity: 0; transition: opacity 1.2s ease-out;
+}
+.ready .stage { opacity: 1; }
+.stage::before {                       /* the leaf's shadow on the table */
+  content: ""; position: absolute; inset: 0; z-index: -1;
+  box-shadow: 0 2.2cqw 5cqw rgba(0, 0, 0, .7), 0 0 0 1px rgba(20, 10, 0, .6);
+}
+.page { position: absolute; inset: 0; overflow: hidden; background: #e3cf8f url("tribute/page.jpg") center / cover no-repeat; }
+.page::after {                         /* aged edges + a little tooth, over art and figures alike */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .25  0 0 0 0 .1  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  mix-blend-mode: multiply; opacity: .28;
+  box-shadow: inset 0 0 6cqw rgba(70, 40, 5, .55);
+}
+.p2 { z-index: 1; }
+.p1 { z-index: 2; }
+.turned .p1 { visibility: hidden; }
+
+/* the sun, breathing very slightly */
+.sun {
+  position: absolute; left: 72.9%; top: 29.6%; width: 22cqw; height: 22cqw; margin: -11cqw;
+  background: radial-gradient(closest-side, rgba(255, 252, 190, .55), rgba(255, 245, 170, .22) 38%, transparent 70%);
+  mix-blend-mode: soft-light; animation: sun 9s ease-in-out infinite;
+}
+@keyframes sun { 0%, 100% { opacity: .55; transform: scale(.96); } 50% { opacity: 1; transform: scale(1.05); } }
+
+/* ---------- figures: one painting, cut at the neck so the head can move a hair ---------- */
+.fig { position: absolute; transform-origin: 50% 100%; }
+.fig img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; -webkit-user-drag: none; pointer-events: none; }
+
+.lady { left: 13.2%; bottom: -.5%; height: 85%; aspect-ratio: 242 / 569; animation: sway 8s ease-in-out infinite; }
+.lady .body { clip-path: polygon(0 0, 22% 0, 22% 22.4%, 100% 22.4%, 100% 100%, 0 100%); transform-origin: 50% 100%; animation: breathe 5.5s ease-in-out infinite; }
+.lady .head { clip-path: polygon(22% 0, 100% 0, 100% 23%, 22% 23%); transform-origin: 52% 22.8%; animation: lady-idle 8s ease-in-out infinite; }
+.p1.speak .lady .head { animation: lady-speak 2.6s ease-in-out 1, lady-idle 8s 2.6s ease-in-out infinite; }
+
+.knight { left: 60%; bottom: 0; height: 79%; aspect-ratio: 391 / 617; animation: sway 6.5s ease-in-out infinite; }
+.knight .body { clip-path: polygon(0 17.2%, 64% 17.2%, 64% 0, 100% 0, 100% 100%, 0 100%); transform-origin: 45% 100%; animation: breathe 4.6s ease-in-out infinite; }
+.knight .head { clip-path: polygon(0 0, 64% 0, 64% 17.8%, 0 17.8%); transform-origin: 47% 17.6%; animation: knight-idle 6.5s ease-in-out infinite; }
+.p2.speak .knight       { animation: chortle 1.7s ease-in-out 1, sway 6.5s 1.7s ease-in-out infinite; }
+.p2.speak .knight .head { animation: laugh 1.7s ease-in-out 1, knight-idle 6.5s 1.7s ease-in-out infinite; }
+.p2.speak2 .knight .head { animation: cock 1.5s cubic-bezier(.3, .7, .3, 1) 1 forwards, smug 5s 1.5s ease-in-out infinite; }
+
+@keyframes sway        { 0%, 100% { transform: rotate(-.35deg); } 50% { transform: rotate(.4deg); } }
+@keyframes breathe     { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.004, 1.007); } }
+@keyframes lady-idle   { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(1deg); } }
+@keyframes lady-speak  { 0% { transform: rotate(0); } 22% { transform: rotate(-1.6deg); } 50% { transform: rotate(1.8deg); } 74% { transform: rotate(.6deg); } 100% { transform: rotate(0); } }
+@keyframes knight-idle { 0%, 100% { transform: rotate(-1deg); } 50% { transform: rotate(1.2deg); } }
+@keyframes laugh       { 0% { transform: rotate(-1deg); } 16% { transform: rotate(5deg); } 28% { transform: rotate(3.2deg); } 40% { transform: rotate(5.4deg); } 52% { transform: rotate(3.4deg); } 64% { transform: rotate(5deg); } 100% { transform: rotate(-1deg); } }
+@keyframes chortle     { 0%, 100% { transform: rotate(-.35deg) translateY(0); } 16% { transform: rotate(.9deg) translateY(-.5%); } 28% { transform: rotate(.9deg) translateY(0); } 40% { transform: rotate(1deg) translateY(-.45%); } 52% { transform: rotate(1deg) translateY(0); } 64% { transform: rotate(.8deg) translateY(-.3%); } }
+@keyframes cock        { from { transform: rotate(0); } 60% { transform: rotate(-5.5deg); } to { transform: rotate(-4.2deg); } }
+@keyframes smug        { 0%, 100% { transform: rotate(-4.2deg); } 50% { transform: rotate(-2.6deg); } }
+
+/* ---------- speech: words leave the mouth, drift, and settle onto the vellum ---------- */
+.say {
+  position: absolute; margin: 0; font-weight: 400; line-height: 1.08; white-space: nowrap;
+  color: var(--ink);
+  text-shadow: 0 0 .28em rgba(247, 230, 165, .95), 0 0 .08em rgba(247, 230, 165, .9);
+}
+.say b { font-weight: 400; color: var(--minium); }
+.say .ln { display: block; }
+.say .w {
+  display: inline-block; opacity: 0;
+  --from-x: -1.1em; --from-y: .55em;
+}
+.say .w + .w { margin-left: .26em; }
+.lady-says   { left: 31%; top: 15.5%; font-size: 5.7cqw; transform: rotate(-2deg); transform-origin: 0 60%; }
+.lady-says .ln + .ln { padding-left: 1.1em; }
+.knight-says { right: 34.5%; top: 14.5%; font-size: 5.1cqw; text-align: right; transform: rotate(1.6deg); transform-origin: 100% 60%; }
+.knight-says .w { --from-x: 1.2em; --from-y: .5em; }
+.knight-says .ln + .ln { padding-right: .7em; margin-top: .08em; }
+
+.speak  .say .ln:first-child .w,
+.p1.speak .say .w,
+.speak2 .say .ln + .ln .w {
+  animation: utter 1.5s cubic-bezier(.2, .7, .2, 1) forwards;
+  animation-delay: calc(var(--i) * .17s);
+}
+.speak .say { animation: settle 7s 1.4s ease-in-out infinite; }
+.p2.speak .knight-says .ln + .ln .w { animation: none; }
+.p2.speak2 .knight-says .ln + .ln .w { animation: utter 1.3s cubic-bezier(.2, .7, .2, 1) forwards; animation-delay: calc(var(--i) * .15s); }
+
+@keyframes utter {
+  0%   { opacity: 0; transform: translate(var(--from-x), var(--from-y)) scale(.55) rotate(-4deg); filter: blur(.12em); }
+  45%  { opacity: 1; transform: translate(0, -.2em) scale(1.04) rotate(.6deg); filter: blur(0); }
+  72%  { opacity: 1; transform: translate(0, .05em) scale(1); }
+  100% { opacity: 1; transform: none; filter: none; }
+}
+@keyframes settle { 0%, 100% { translate: 0 0; } 50% { translate: 0 -.07em; } }
+
+/* ---------- the turning leaf is painted here ---------- */
+canvas.turn { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+
+/* ---------- margins of the book ---------- */
+.home, .folio, .again {
+  position: fixed; z-index: 6; color: var(--vellum); text-decoration: none; font-size: clamp(20px, 3.2vh, 30px); line-height: 1;
+  text-shadow: 0 .05em 0 #1d1004, 0 .1em .35em rgba(0, 0, 0, .8);
+  opacity: .82; transition: opacity .25s, transform .25s;
+}
+.home b, .again b { font-weight: 400; color: #f0482f; }
+.home { left: 20px; top: 16px; }
+.home:hover, .again:hover, .home:focus-visible, .again:focus-visible { opacity: 1; transform: translateY(-1px); outline: none; }
+.folio { left: 0; right: 0; bottom: 18px; text-align: center; opacity: .5; pointer-events: none; letter-spacing: .04em; }
+.again {
+  right: 20px; bottom: 14px; background: none; border: 0; padding: 4px 2px; font-family: inherit;
+  opacity: 0; pointer-events: none;
+}
+.ended .again { opacity: .85; pointer-events: auto; }
+.stage.turnable { cursor: url("cutouts/hand-pointer.png") 4 2, pointer; }
+.stage.turnable * { cursor: inherit; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fig, .fig img, .sun, .say { animation: none !important; }
+  .speak .say .w, .speak2 .say .w { animation: none !important; opacity: 1; }
+  .p1 { transition: opacity .8s; }
+}
+</style>
+</head>
+<body>
+<a class="home" href="index.html"><b>I</b>llias</a>
+
+<main class="stage" aria-label="An illuminated manuscript in two leaves">
+  <section class="page p2" aria-hidden="true">
+    <div class="sun"></div>
+    <div class="fig knight">
+      <img class="body" src="tribute/knight.png" alt="">
+      <img class="head" src="tribute/knight.png" alt="A knight in blue mail, hand on his sword, one arm flung wide">
+    </div>
+    <p class="say knight-says">
+      <span class="ln"><span class="w" style="--i:0"><b>A</b>h,</span><span class="w" style="--i:1">insane</span><span class="w" style="--i:2">she</span><span class="w" style="--i:3">said!</span></span>
+      <span class="ln"><span class="w" style="--i:0"><b>L</b>ike</span><span class="w" style="--i:1"><b>W</b>illiam</span><span class="w" style="--i:2"><b>B</b>lake!</span></span>
+    </p>
+  </section>
+
+  <section class="page p1">
+    <div class="sun"></div>
+    <div class="fig lady">
+      <img class="body" src="tribute/lady.png" alt="">
+      <img class="head" src="tribute/lady.png" alt="A crowned lady in a red mantle, one hand raised">
+    </div>
+    <p class="say lady-says">
+      <span class="ln"><span class="w" style="--i:0"><b>M</b>any</span><span class="w" style="--i:1">would</span><span class="w" style="--i:2">find</span></span>
+      <span class="ln"><span class="w" style="--i:3">you</span><span class="w" style="--i:4">insane.</span></span>
+    </p>
+  </section>
+</main>
+
+<canvas class="turn" aria-hidden="true"></canvas>
+<div class="folio" aria-hidden="true">fol. i</div>
+<button class="again" type="button"><b>R</b>ead again</button>
+
+<script>
+(() => {
+  const body = document.body;
+  const stage = document.querySelector('.stage');
+  const p1 = document.querySelector('.p1'), p2 = document.querySelector('.p2');
+  const folio = document.querySelector('.folio');
+  const cv = document.querySelector('canvas.turn'), ctx = cv.getContext('2d');
+  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const plate = new Image(); plate.src = 'tribute/page.jpg';
+
+  /* ---- a wait that a click (or key) can cut short ---- */
+  let run = 0, skip = null, turning = false;
+  const wait = ms => new Promise(res => {
+    const t = setTimeout(done, ms);
+    function done() { clearTimeout(t); skip = null; res(); }
+    skip = done;
+  });
+  const nudge = () => { if (!turning && skip) skip(); };
+  stage.addEventListener('click', nudge);
+  addEventListener('keydown', e => {
+    if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'Enter') { if (e.target.closest('a, button')) return; e.preventDefault(); nudge(); }
+  });
+
+  /* ---- the page turn ----
+     The bottom-right corner C is carried to P along a low arc. The crease is the
+     perpendicular bisector of C–P: page one is clipped to the near side of it, and the
+     lifted part is mirrored across it and painted as the back of the leaf. */
+  function sizeCanvas() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    cv.width = innerWidth * dpr; cv.height = innerHeight * dpr;
+    return dpr;
+  }
+  function clipHalf(poly, M, n, keepFar) {          // Sutherland–Hodgman against the crease
+    const side = p => ((p[0] - M[0]) * n[0] + (p[1] - M[1]) * n[1]) * (keepFar ? 1 : -1);
+    const out = [];
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i], b = poly[(i + 1) % poly.length], sa = side(a), sb = side(b);
+      if (sa >= 0) out.push(a);
+      if ((sa >= 0) !== (sb >= 0)) { const t = sa / (sa - sb); out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]); }
+    }
+    return out;
+  }
+  const trace = poly => { ctx.beginPath(); poly.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); };
+
+  function drawTurn(e, dpr) {
+    const r = stage.getBoundingClientRect(), W = r.width, H = r.height;
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.setTransform(dpr, 0, 0, dpr, r.left * dpr, r.top * dpr);
+
+    const C = [W, H];
+    const P = [W - 2 * W * e, H - Math.sin(Math.PI * e) * H * .30 - e * (1 - e) * H * .25];
+    const dx = C[0] - P[0], dy = C[1] - P[1], d = Math.hypot(dx, dy);
+    if (d < 1) { p1.style.clipPath = ''; return; }
+    const n = [dx / d, dy / d], M = [(C[0] + P[0]) / 2, (C[1] + P[1]) / 2];
+    const rect = [[0, 0], [W, 0], [W, H], [0, H]];
+    const kept = clipHalf(rect, M, n, false), lifted = clipHalf(rect, M, n, true);
+
+    p1.style.clipPath = kept.length > 2
+      ? 'polygon(' + kept.map(p => (p[0] / W * 100).toFixed(3) + '% ' + (p[1] / H * 100).toFixed(3) + '%').join(',') + ')'
+      : 'polygon(0 0, 0 0, 0 0)';
+    if (lifted.length < 3) return;
+
+    const mirror = p => { const k = 2 * ((p[0] - M[0]) * n[0] + (p[1] - M[1]) * n[1]); return [p[0] - k * n[0], p[1] - k * n[1]]; };
+    const flap = lifted.map(mirror);
+    const fade = e > .86 ? 1 - (e - .86) / .14 : 1;
+    const along = (from, to) => ctx.createLinearGradient(M[0] + n[0] * from, M[1] + n[1] * from, M[0] + n[0] * to, M[1] + n[1] * to);
+
+    /* shadow the lifted leaf throws on the page beneath it */
+    ctx.save(); trace(lifted); ctx.clip();
+    const sw = Math.min(d * .32, W * .16);
+    let g = along(0, sw);
+    g.addColorStop(0, `rgba(35,18,2,${.5 * fade})`); g.addColorStop(.35, `rgba(35,18,2,${.2 * fade})`); g.addColorStop(1, 'rgba(35,18,2,0)');
+    ctx.fillStyle = g; ctx.fillRect(-W, -H, W * 3, H * 3);
+    ctx.restore();
+
+    /* the back of the leaf */
+    ctx.save();
+    ctx.globalAlpha = fade;
+    ctx.shadowColor = 'rgba(15,8,0,.55)'; ctx.shadowBlur = Math.min(d * .12, W * .05); ctx.shadowOffsetX = -n[0] * 6; ctx.shadowOffsetY = 6;
+    trace(flap); ctx.fillStyle = '#e4d29a'; ctx.fill();
+    ctx.shadowColor = 'transparent';
+    ctx.clip();
+    if (plate.complete && plate.naturalWidth) {      // the painting, ghosting through the vellum in mirror
+      ctx.save();
+      const k = 2 * (M[0] * n[0] + M[1] * n[1]);
+      ctx.transform(1 - 2 * n[0] * n[0], -2 * n[0] * n[1], -2 * n[0] * n[1], 1 - 2 * n[1] * n[1], k * n[0], k * n[1]);
+      ctx.globalAlpha = fade * .2; ctx.drawImage(plate, 0, 0, W, H);
+      ctx.restore();
+    }
+    const fw = d / 2;                                // the curl: dark in the crease, a lit shoulder, shade at the edge
+    g = along(0, -fw);
+    g.addColorStop(0, 'rgba(60,32,4,.5)'); g.addColorStop(.07, 'rgba(60,32,4,.12)'); g.addColorStop(.2, 'rgba(255,248,215,.5)');
+    g.addColorStop(.45, 'rgba(255,248,215,.08)'); g.addColorStop(.8, 'rgba(60,32,4,.08)'); g.addColorStop(1, 'rgba(60,32,4,.3)');
+    ctx.fillStyle = g; ctx.fillRect(-W * 2, -H * 2, W * 5, H * 5);
+    ctx.restore();
+
+    /* a hairline where the page bends away, on the part still lying flat */
+    ctx.save(); trace(kept); ctx.clip();
+    g = along(0, -Math.min(d * .1, W * .04));
+    g.addColorStop(0, `rgba(255,250,220,${.25 * fade})`); g.addColorStop(1, 'rgba(255,250,220,0)');
+    ctx.fillStyle = g; ctx.fillRect(-W, -H, W * 3, H * 3);
+    ctx.restore();
+  }
+
+  function turnPage(id) {
+    if (calm) {
+      p1.style.opacity = 0;
+      return new Promise(res => setTimeout(() => { if (id === run) body.classList.add('turned'); res(); }, 800));
+    }
+    return new Promise(res => {
+      turning = true;
+      const dpr = sizeCanvas(), t0 = performance.now(), dur = 2300;
+      const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      (function step(now) {
+        if (id !== run) { turning = false; return res(); }
+        const t = Math.min((now - t0) / dur, 1);
+        drawTurn(ease(t) * .999 + .001 * t, dpr);
+        if (t < 1) return requestAnimationFrame(step);
+        ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
+        body.classList.add('turned'); p1.style.clipPath = '';
+        turning = false; res();
+      })(t0);
+    });
+  }
+
+  /* ---- the telling ---- */
+  async function tell() {
+    const id = ++run;
+    body.classList.remove('turned', 'ended');
+    p1.classList.remove('speak'); p2.classList.remove('speak', 'speak2');
+    p1.style.clipPath = ''; p1.style.opacity = '';
+    p2.setAttribute('aria-hidden', 'true'); p1.removeAttribute('aria-hidden');
+    folio.textContent = 'fol. i';
+    stage.classList.add('turnable');
+    void stage.offsetWidth;                          // let the removed animations actually restart
+
+    await wait(1300);            if (id !== run) return;
+    p1.classList.add('speak');
+    await wait(5600);            if (id !== run) return;
+    await turnPage(id);          if (id !== run) return;
+    p1.setAttribute('aria-hidden', 'true'); p2.removeAttribute('aria-hidden');
+    folio.textContent = 'fol. ii';
+    await wait(450);             if (id !== run) return;
+    p2.classList.add('speak');
+    await wait(1900);            if (id !== run) return;
+    p2.classList.add('speak2');
+    stage.classList.remove('turnable');
+    await wait(1600);            if (id !== run) return;
+    body.classList.add('ended');
+  }
+  document.querySelector('.again').addEventListener('click', tell);
+
+  /* ---- begin once the leaf and both figures are in hand ---- */
+  const imgs = [plate, ...document.querySelectorAll('.fig img')];
+  let begun = false;
+  const begin = () => { if (begun) return; begun = true; body.classList.add('ready'); tell(); };
+  Promise.all(imgs.map(i => i.decode ? i.decode().catch(() => {}) : Promise.resolve())).then(begin);
+  setTimeout(begin, 3000);
+})();
+</script>
+</body>
+</html>
