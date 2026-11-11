@@ -20,7 +20,7 @@
   --bark: #0b0f0c; --vellum: #e9dec3; --vellum-deep: #cdb98a; --vellum-lit: #fbf3dc;
   --ink: #2b1d12; --ink-soft: #5a4531; --minium: #cf3422; --minium-lit: #f0482f; --moss: #5d6a2a;
   --scribe: "Olde English", "Old English Text MT", "Luminari", "Apple Chancery", fantasy, serif;
-  --sq: min(9.3vh, 11.4vw);
+  --sq: min(8.9vh, 11.4vw);
 }
 * { box-sizing: border-box; }
 html, body { min-height: 100%; margin: 0; }
@@ -70,13 +70,17 @@ body {
 .s.moved span { animation: land .28s cubic-bezier(.2, .8, .2, 1); }
 @keyframes land { from { transform: scale(1.35) translateY(-12%); opacity: .5; } to { transform: none; opacity: 1; } }
 
-.bar { display: flex; gap: 1.4em; align-items: center; font-size: clamp(18px, 3vh, 26px); }
+.bar { display: flex; flex-wrap: wrap; justify-content: center; gap: .3em 1.4em; align-items: center; font-size: clamp(18px, 3vh, 26px); }
 .btn {
   background: none; border: 0; padding: .1em .2em; font: inherit; color: var(--vellum); opacity: .85;
   text-shadow: 0 .05em 0 #1d1004, 0 .1em .35em rgba(0, 0, 0, .8);
 }
 .btn b { font-weight: 400; color: var(--minium-lit); }
 .btn:hover, .btn:focus-visible { opacity: 1; outline: none; text-decoration: underline; text-decoration-thickness: .05em; text-underline-offset: .14em; }
+.levels { display: flex; gap: .7em; }
+.btn[aria-pressed="true"] { opacity: 1; text-decoration: underline; text-decoration-color: var(--minium-lit); text-decoration-thickness: .06em; text-underline-offset: .16em; }
+.credit { margin: 0; font: 12px/1.3 Georgia, serif; color: var(--vellum-deep); opacity: .55; }
+.credit a { color: inherit; }
 .count { color: var(--vellum-deep); opacity: .8; font-family: "Apple Symbols", "Segoe UI Symbol", serif; font-size: .9em; letter-spacing: .05em; min-height: 1.2em; }
 
 @media (max-aspect-ratio: 1/1) { body { padding-top: 60px; } }
@@ -91,8 +95,14 @@ body {
   <div class="board" id="board" role="grid" aria-label="Chessboard. You play the pale pieces."></div>
   <div class="bar">
     <button class="btn" id="again" type="button"><b>N</b>ew game</button>
+    <span class="levels" role="group" aria-label="How strong the wizard plays">
+      <button class="btn" type="button" data-level="apprentice"><b>A</b>pprentice</button>
+      <button class="btn" type="button" data-level="sorcerer"><b>S</b>orcerer</button>
+      <button class="btn" type="button" data-level="archmage"><b>A</b>rchmage</button>
+    </span>
     <span class="count" id="count" aria-label="Captured pieces"></span>
   </div>
+  <p class="credit">The wizard thinks with <a href="https://github.com/nmrugg/stockfish.js">Stockfish.js</a>, free software under the <a href="stockfish/Copying.txt">GPLv3</a>.</p>
 </main>
 
 <script src="chess-engine.js"></script>
@@ -119,7 +129,57 @@ body {
     draw:    ['Stalemate. Neither of us leaves the wood today.']
   };
 
-  let s, sel = -1, moves = [], last = null, over = false, thinking = false, taken = [];
+  let s, sel = -1, moves = [], last = null, over = false, thinking = false, taken = [], line = [], game = 0;
+
+  /* ---------- the wizard's mind: Stockfish in a worker, spoken to in UCI ----------
+     chess-engine.js still referees (legal moves, check, mate); Stockfish only chooses his move.
+     If the worker cannot start, the small built-in search answers instead. */
+  const LEVELS = {
+    apprentice: { elo: 1350, ms: 300 },
+    sorcerer:   { elo: 1900, ms: 600 },
+    archmage:   { elo: 0,    ms: 1200 }                 // 0 = no limit: full strength
+  };
+  let level = 'sorcerer';
+  try { const v = localStorage.getItem('illias-chess-level'); if (LEVELS[v]) level = v; } catch (e) {}
+  const levelBtns = [...document.querySelectorAll('[data-level]')];
+  const showLevel = () => levelBtns.forEach(b => b.setAttribute('aria-pressed', String(b.dataset.level === level)));
+  levelBtns.forEach(b => b.addEventListener('click', () => {
+    level = b.dataset.level; showLevel();
+    try { localStorage.setItem('illias-chess-level', level); } catch (e) {}
+  }));
+  showLevel();
+
+  let fish = null, fishReady = false, waiting = null;
+  try {
+    fish = new Worker('stockfish/stockfish-19-lite-single.js');
+    fish.onmessage = e => {
+      const l = String(e.data);
+      if (l === 'uciok') fishReady = true;
+      const m = /^bestmove (\S+)/.exec(l);
+      if (m && waiting) { const w = waiting; waiting = null; w(m[1]); }
+    };
+    fish.onerror = () => { fish = null; fishReady = false; if (waiting) { const w = waiting; waiting = null; w(null); } };
+    fish.postMessage('uci');
+  } catch (e) { fish = null; }
+
+  const uci = m => sqName(m.f) + sqName(m.t) + (m.promo ? m.promo.toLowerCase() : '');
+  function wizardMove() {                               // resolves to one of the legal moves in `moves`
+    return new Promise(res => {
+      const fallback = () => res(E.best(s, 3));
+      if (!fish || !fishReady) return fallback();
+      const L = LEVELS[level];
+      const timer = setTimeout(() => { if (waiting) { waiting = null; fallback(); } }, L.ms + 6000);
+      waiting = best => {
+        clearTimeout(timer);
+        const m = best && moves.find(m => uci(m) === best);
+        m ? res(m) : fallback();
+      };
+      fish.postMessage('setoption name UCI_LimitStrength value ' + (L.elo ? 'true' : 'false'));
+      if (L.elo) fish.postMessage('setoption name UCI_Elo value ' + L.elo);
+      fish.postMessage('position startpos' + (line.length ? ' moves ' + line.join(' ') : ''));
+      fish.postMessage('go movetime ' + L.ms);
+    });
+  }
   const squares = [];
   for (let i = 0; i < 64; i++) {
     const b = document.createElement('button');
@@ -148,6 +208,7 @@ body {
   function play(m) {
     const cap = m.ep ? (s.w ? 'p' : 'P') : s.b[m.t];
     if (cap !== '.') taken.push(cap);
+    line.push(uci(m));
     s = E.make(s, m); last = m; sel = -1; moves = E.legal(s);
     draw(m.t);
     return cap !== '.';
@@ -167,12 +228,16 @@ body {
       if (ended()) return;
       thinking = true;
       const youCheck = E.inCheck(s);
-      setTimeout(() => {
-        const r = E.best(s, 3), wizTook = play(r);
-        thinking = false;
-        if (ended()) return;
-        say(pick(E.inCheck(s) ? LINES.check : wizTook ? LINES.took : youCheck ? LINES.checked : took ? LINES.lost : LINES.quiet));
-      }, 450);
+      const g = game, t0 = performance.now();
+      wizardMove().then(r => {
+        setTimeout(() => {                              // never answer instantly; it looks rude
+          if (g !== game) return;
+          const wizTook = play(r);
+          thinking = false;
+          if (ended()) return;
+          say(pick(E.inCheck(s) ? LINES.check : wizTook ? LINES.took : youCheck ? LINES.checked : took ? LINES.lost : LINES.quiet));
+        }, Math.max(0, 450 - (performance.now() - t0)));
+      });
       return;
     }
     const p = s.b[i];
@@ -180,7 +245,11 @@ body {
     draw();
   }
 
-  function fresh() { s = E.fresh(); sel = -1; last = null; over = false; thinking = false; taken = []; moves = E.legal(s); draw(); say(pick(LINES.open)); }
+  function fresh() {
+    game++; waiting = null; line = [];
+    if (fish && fishReady) { fish.postMessage('stop'); fish.postMessage('ucinewgame'); }
+    s = E.fresh(); sel = -1; last = null; over = false; thinking = false; taken = []; moves = E.legal(s); draw(); say(pick(LINES.open));
+  }
   document.getElementById('again').addEventListener('click', fresh);
   fresh();
 })();
