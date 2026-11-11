@@ -1,0 +1,4 @@
+/* ---------- medieval hand cursors ---------- */
+*, *::before, *::after { cursor: url("cutouts/hand-default.png") 4 2, default; }
+a, button, [role="button"], input[type="submit"], .clickable, summary, .way { cursor: url("cutouts/hand-pointer.png") 4 2, pointer; }
+a:active, button:active, [role="button"]:active, .clickable:active, summary:active, .way:active { cursor: url("cutouts/hand-grab.png") 4 2, grabbing; }
