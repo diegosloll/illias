@@ -50,18 +50,21 @@ body {
   content: ""; position: absolute; inset: 0; pointer-events: none;
   background:
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .25  0 0 0 0 .1  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
-  mix-blend-mode: multiply; opacity: .28;
+  opacity: .3;
   box-shadow: inset 0 0 6cqw rgba(70, 40, 5, .55);
 }
-.p2 { z-index: 1; }
-.p1 { z-index: 2; }
+.p2 { z-index: 1; visibility: hidden; }
+.turning .p2, .turned .p2, .fading .p2 { visibility: visible; }
+.leaf { position: absolute; inset: 0; z-index: 2; }      /* page one's window; during a turn it becomes the clip */
+.turning .leaf { inset: auto; left: 0; top: 0; overflow: hidden; transform-origin: 0 0; will-change: transform; }
+.turning .p1  { inset: auto; left: 0; top: 0; transform-origin: 0 0; will-change: transform; }
 .turned .p1 { visibility: hidden; }
 
 /* the sun, breathing very slightly */
 .sun {
   position: absolute; left: 72.9%; top: 29.6%; width: 22cqw; height: 22cqw; margin: -11cqw;
-  background: radial-gradient(closest-side, rgba(255, 252, 190, .55), rgba(255, 245, 170, .22) 38%, transparent 70%);
-  mix-blend-mode: soft-light; animation: sun 9s ease-in-out infinite;
+  background: radial-gradient(closest-side, rgba(255, 253, 205, .30), rgba(255, 248, 185, .12) 38%, transparent 70%);
+  animation: sun 9s ease-in-out infinite;
 }
 @keyframes sun { 0%, 100% { opacity: .55; transform: scale(.96); } 50% { opacity: 1; transform: scale(1.05); } }
 
@@ -121,10 +124,10 @@ body {
 .p2.speak2 .knight-says .ln + .ln .w { animation: utter 1.3s cubic-bezier(.2, .7, .2, 1) forwards; animation-delay: calc(var(--i) * .15s); }
 
 @keyframes utter {
-  0%   { opacity: 0; transform: translate(var(--from-x), var(--from-y)) scale(.55) rotate(-4deg); filter: blur(.12em); }
-  45%  { opacity: 1; transform: translate(0, -.2em) scale(1.04) rotate(.6deg); filter: blur(0); }
+  0%   { opacity: 0; transform: translate(var(--from-x), var(--from-y)) scale(.55) rotate(-4deg); }
+  45%  { opacity: 1; transform: translate(0, -.2em) scale(1.04) rotate(.6deg); }
   72%  { opacity: 1; transform: translate(0, .05em) scale(1); }
-  100% { opacity: 1; transform: none; filter: none; }
+  100% { opacity: 1; transform: none; }
 }
 @keyframes settle { 0%, 100% { translate: 0 0; } 50% { translate: 0 -.07em; } }
 
@@ -172,6 +175,7 @@ canvas.turn { position: fixed; inset: 0; width: 100%; height: 100%; pointer-even
     </p>
   </section>
 
+  <div class="leaf">
   <section class="page p1">
     <div class="sun"></div>
     <div class="fig lady">
@@ -183,6 +187,7 @@ canvas.turn { position: fixed; inset: 0; width: 100%; height: 100%; pointer-even
       <span class="ln"><span class="w" style="--i:3">you</span><span class="w" style="--i:4">insane.</span></span>
     </p>
   </section>
+  </div>
 </main>
 
 <canvas class="turn" aria-hidden="true"></canvas>
@@ -193,7 +198,7 @@ canvas.turn { position: fixed; inset: 0; width: 100%; height: 100%; pointer-even
 (() => {
   const body = document.body;
   const stage = document.querySelector('.stage');
-  const p1 = document.querySelector('.p1'), p2 = document.querySelector('.p2');
+  const p1 = document.querySelector('.p1'), p2 = document.querySelector('.p2'), leaf = document.querySelector('.leaf');
   const folio = document.querySelector('.folio');
   const cv = document.querySelector('canvas.turn'), ctx = cv.getContext('2d');
   const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -216,9 +221,20 @@ canvas.turn { position: fixed; inset: 0; width: 100%; height: 100%; pointer-even
   /* ---- the page turn ----
      The bottom-right corner C is carried to P along a low arc. The crease is the
      perpendicular bisector of C–P: page one is clipped to the near side of it, and the
-     lifted part is mirrored across it and painted as the back of the leaf. */
+     lifted part is mirrored across it and painted as the back of the leaf.
+     The clip is a big square (.leaf) whose edge is laid along the crease, with page one
+     counter-transformed inside it — transforms only, so nothing is repainted per frame. */
+  function clipLeaf(M, n, W, H) {
+    const S = 2 * Math.hypot(W, H), tx = -n[1], ty = n[0];
+    const e = M[0] - S * n[0] - S / 2 * tx, f = M[1] - S * n[1] - S / 2 * ty;
+    leaf.style.width = leaf.style.height = S + 'px';
+    leaf.style.transform = `matrix(${n[0]},${n[1]},${tx},${ty},${e},${f})`;
+    p1.style.width = W + 'px'; p1.style.height = H + 'px';
+    p1.style.transform = `matrix(${n[0]},${tx},${n[1]},${ty},${-(n[0] * e + n[1] * f)},${-(tx * e + ty * f)})`;
+  }
+  function freeLeaf() { leaf.style.cssText = ''; p1.style.width = p1.style.height = p1.style.transform = ''; }
   function sizeCanvas() {
-    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const dpr = 1;                                   // gradients and a moving edge: 1x is plenty, and 4x fewer pixels
     cv.width = innerWidth * dpr; cv.height = innerHeight * dpr;
     return dpr;
   }
@@ -242,14 +258,12 @@ canvas.turn { position: fixed; inset: 0; width: 100%; height: 100%; pointer-even
     const C = [W, H];
     const P = [W - 2 * W * e, H - Math.sin(Math.PI * e) * H * .30 - e * (1 - e) * H * .25];
     const dx = C[0] - P[0], dy = C[1] - P[1], d = Math.hypot(dx, dy);
-    if (d < 1) { p1.style.clipPath = ''; return; }
+    if (d < 1) { clipLeaf([W * 2, H / 2], [1, 0], W, H); return; }
     const n = [dx / d, dy / d], M = [(C[0] + P[0]) / 2, (C[1] + P[1]) / 2];
     const rect = [[0, 0], [W, 0], [W, H], [0, H]];
     const kept = clipHalf(rect, M, n, false), lifted = clipHalf(rect, M, n, true);
 
-    p1.style.clipPath = kept.length > 2
-      ? 'polygon(' + kept.map(p => (p[0] / W * 100).toFixed(3) + '% ' + (p[1] / H * 100).toFixed(3) + '%').join(',') + ')'
-      : 'polygon(0 0, 0 0, 0 0)';
+    clipLeaf(M, n, W, H);
     if (lifted.length < 3) return;
 
     const mirror = p => { const k = 2 * ((p[0] - M[0]) * n[0] + (p[1] - M[1]) * n[1]); return [p[0] - k * n[0], p[1] - k * n[1]]; };
@@ -268,9 +282,10 @@ canvas.turn { position: fixed; inset: 0; width: 100%; height: 100%; pointer-even
     /* the back of the leaf */
     ctx.save();
     ctx.globalAlpha = fade;
-    ctx.shadowColor = 'rgba(15,8,0,.55)'; ctx.shadowBlur = Math.min(d * .12, W * .05); ctx.shadowOffsetX = -n[0] * 6; ctx.shadowOffsetY = 6;
+    const sh = Math.min(d * .05, W * .018);          // a soft edge shadow from three offset fills (shadowBlur is costly)
+    ctx.fillStyle = 'rgba(15,8,0,.11)';
+    for (let i = 3; i >= 1; i--) { ctx.save(); ctx.translate(-n[0] * sh * i * .5, sh * i * .5); trace(flap); ctx.fill(); ctx.restore(); }
     trace(flap); ctx.fillStyle = '#e4d29a'; ctx.fill();
-    ctx.shadowColor = 'transparent';
     ctx.clip();
     if (plate.complete && plate.naturalWidth) {      // the painting, ghosting through the vellum in mirror
       ctx.save();
@@ -296,20 +311,21 @@ canvas.turn { position: fixed; inset: 0; width: 100%; height: 100%; pointer-even
 
   function turnPage(id) {
     if (calm) {
-      p1.style.opacity = 0;
+      p1.style.opacity = 0; body.classList.add('fading');
       return new Promise(res => setTimeout(() => { if (id === run) body.classList.add('turned'); res(); }, 800));
     }
     return new Promise(res => {
-      turning = true;
+      turning = true; body.classList.add('turning');
       const dpr = sizeCanvas(), t0 = performance.now(), dur = 2300;
       const ease = t => t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
       (function step(now) {
-        if (id !== run) { turning = false; return res(); }
+        if (id !== run) { turning = false; body.classList.remove('turning'); freeLeaf(); return res(); }
         const t = Math.min((now - t0) / dur, 1);
         drawTurn(ease(t) * .999 + .001 * t, dpr);
         if (t < 1) return requestAnimationFrame(step);
         ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height);
-        body.classList.add('turned'); p1.style.clipPath = '';
+        body.classList.add('turned'); body.classList.remove('turning'); freeLeaf();
+        cv.width = cv.height = 0;                      // release the backing store until the next turn
         turning = false; res();
       })(t0);
     });
@@ -318,9 +334,9 @@ canvas.turn { position: fixed; inset: 0; width: 100%; height: 100%; pointer-even
   /* ---- the telling ---- */
   async function tell() {
     const id = ++run;
-    body.classList.remove('turned', 'ended');
+    body.classList.remove('turned', 'turning', 'fading', 'ended');
     p1.classList.remove('speak'); p2.classList.remove('speak', 'speak2');
-    p1.style.clipPath = ''; p1.style.opacity = '';
+    freeLeaf(); p1.style.opacity = '';
     p2.setAttribute('aria-hidden', 'true'); p1.removeAttribute('aria-hidden');
     folio.textContent = 'fol. i';
     stage.classList.add('turnable');

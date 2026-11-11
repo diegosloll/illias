@@ -88,7 +88,7 @@ body { font-family: var(--scribe); color: var(--vellum); -webkit-font-smoothing:
     radial-gradient(ellipse 22% 46% at 18% 70%, rgba(150, 165, 235, .30), transparent 70%),
     radial-gradient(ellipse 26% 40% at 46% 78%, rgba(120, 140, 215, .24), transparent 70%),
     radial-gradient(ellipse 20% 50% at 74% 72%, rgba(150, 170, 230, .20), transparent 70%);
-  filter: blur(14px);
+  will-change: transform;                 /* soft gradients already; a blur filter on top only cost frames */
   animation: drift 46s linear infinite alternate;
 }
 .fog i + i { bottom: -12vh; opacity: .8; animation-duration: 70s; animation-direction: alternate-reverse; }
@@ -156,14 +156,21 @@ canvas.motes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-
   transform: rotate(calc(45deg + var(--p) * 180deg)) scale(calc(1 + var(--p) * .55));
 }
 .way .word {
+  position: relative;
   color: color-mix(in srgb, var(--vellum), var(--vellum-lit) calc(var(--p) * 100%));
   letter-spacing: calc(var(--p) * .035em);
   text-shadow:
     0 .04em 0 rgba(22, 11, 2, .95),
-    0 0 .06em rgba(22, 11, 2, .9),
-    0 0 calc(.1em + var(--p) * .5em) rgba(255, 232, 190, calc(var(--p) * .6)),
-    0 .1em .35em rgba(0, 0, 0, .85);
+    0 0 .06em rgba(22, 11, 2, .9);
 }
+/* the two wide, soft shadows are painted once on their own layers (a copy of the word, shadow only)
+   instead of being re-blurred every frame the cursor is near */
+.way .word::before, .way .word::after {
+  content: attr(data-t); position: absolute; left: 0; top: 0; z-index: -1;
+  color: transparent; letter-spacing: 0; pointer-events: none; will-change: opacity;
+}
+.way .word::before { text-shadow: 0 .1em .35em rgba(0, 0, 0, .85); }
+.way .word::after  { text-shadow: 0 0 .6em rgba(255, 232, 190, .6); opacity: var(--p); }
 .way b { color: color-mix(in srgb, var(--minium), var(--minium-lit) calc(var(--p) * 100%)); }
 .way .rule {                                /* red rule that draws itself in under the word */
   position: absolute; left: .78em; right: .25em; bottom: .02em; height: .045em;
@@ -226,9 +233,9 @@ canvas.motes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-
 
   <nav aria-label="Destinations">
     <ul class="ways">
-      <li><a class="way" href="radio.html"><i class="gem"></i><span class="word"><b>R</b>adio</span><i class="rule"></i></a></li>
-      <li><a class="way" href="tribute.html"><i class="gem"></i><span class="word"><b>T</b>ribute</span><i class="rule"></i></a></li>
-      <li><a class="way" href="socials.html"><i class="gem"></i><span class="word"><b>S</b>ocials</span><i class="rule"></i></a></li>
+      <li><a class="way" href="radio.html"><i class="gem"></i><span class="word" data-t="Radio"><b>R</b>adio</span><i class="rule"></i></a></li>
+      <li><a class="way" href="tribute.html"><i class="gem"></i><span class="word" data-t="Tribute"><b>T</b>ribute</span><i class="rule"></i></a></li>
+      <li><a class="way" href="socials.html"><i class="gem"></i><span class="word" data-t="Socials"><b>S</b>ocials</span><i class="rule"></i></a></li>
     </ul>
   </nav>
 </main>
@@ -246,7 +253,7 @@ canvas.motes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-
   setTimeout(go, 2500);
 
   /* ---- pointer: parallax + how near each way is ---- */
-  let px = -9999, py = -9999, mx = 0, my = 0, tmx = 0, tmy = 0;
+  let px = -9999, py = -9999, mx = 0, my = 0, tmx = 0, tmy = 0, lmx = '', lmy = '';
   const reach = () => Math.max(170, Math.min(innerWidth, innerHeight) * 0.27);
   addEventListener('pointermove', e => {
     px = e.clientX; py = e.clientY;
@@ -265,7 +272,7 @@ canvas.motes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-
   const cv = document.querySelector('canvas.motes'), ctx = cv.getContext('2d');
   let W = 0, H = 0, dpr = 1;
   const size = () => {
-    dpr = Math.min(devicePixelRatio || 1, 2);
+    dpr = 1;                                  // soft glows: 1x is enough, and a quarter of the pixels on Retina
     W = innerWidth; H = innerHeight;
     cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   };
@@ -281,7 +288,11 @@ canvas.motes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-
     const dt = Math.min((now - last) / 1000, .05); last = now;
 
     mx += (tmx - mx) * Math.min(1, dt * 4); my += (tmy - my) * Math.min(1, dt * 4);
-    if (!calm) { root.style.setProperty('--mx', mx.toFixed(4)); root.style.setProperty('--my', my.toFixed(4)); }
+    if (!calm) {
+      const sx = mx.toFixed(3), sy = my.toFixed(3);
+      if (sx !== lmx) root.style.setProperty('--mx', lmx = sx);
+      if (sy !== lmy) root.style.setProperty('--my', lmy = sy);
+    }
 
     const R = reach();
     for (const w of ways) {
@@ -290,7 +301,8 @@ canvas.motes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-
       const near = Math.max(0, 1 - Math.hypot(dx, dy) / R);
       w.target = w.focus ? 1 : near * near * (3 - 2 * near);            // smoothstep
       w.p += (w.target - w.p) * Math.min(1, dt * (w.target > w.p ? 9 : 5));
-      w.el.style.setProperty('--p', w.p.toFixed(3));
+      const sp = w.p < .001 ? '0' : w.p.toFixed(3);
+      if (sp !== w.sp) w.el.style.setProperty('--p', w.sp = sp);
       if (!calm && w.p > .25 && sparks.length < 150 && Math.random() < w.p * dt * 26) {
         sparks.push({ x: rnd(b.left, b.right), y: rnd(b.top + b.height * .3, b.bottom),
                       vx: rnd(-14, 14), vy: rnd(-46, -16), life: 0, max: rnd(.7, 1.5), r: rnd(.7, 2) });
