@@ -395,7 +395,7 @@ body::before {    /* vignette + the same violet air as the landing page */
     folder: s.folder, name: s.name || s.folder, motto: s.motto || '',
     tracks: (s.tracks || []).map(t => typeof t === 'string'
       ? { file: t, title: t.replace(/\.[^.]+$/, '').replace(/[_\-]+/g, ' ').trim() }
-      : { file: t.file, title: t.title || t.file })
+      : { file: t.file, title: t.title || t.file, rand: +t.rand || 0 })
   }));
   let cur = -1, idx = 0, playing = false, armed = false;
 
@@ -413,16 +413,24 @@ body::before {    /* vignette + the same violet air as the landing page */
     idx = s.tracks.length ? Math.floor(Math.random() * s.tracks.length) : 0;
     load(start);
   }
-  let failures = 0;
+  let failures = 0, pendingRand = 0;
   function load(start) {
     const s = stations[cur];
     if (!s.tracks.length) { say('Silence in ' + s.name, `No songs listed for music/${s.folder}/`, true); audio.removeAttribute('src'); audio.load(); setPlaying(false); return; }
     const t = s.tracks[idx];
+    pendingRand = +t.rand || 0;                     // if set, drop the needle somewhere in this many seconds
     audio.src = `music/${s.folder}/${encodeURIComponent(t.file)}`;
     say(t.title, s.motto ? `${s.name} — ${s.motto}` : s.name);
     audio.load();
     if (start) play();
   }
+  /* some songs (a long mixtape) begin mid-stream — the wanderer arrives partway through */
+  audio.addEventListener('loadedmetadata', () => {
+    if (pendingRand > 0 && isFinite(audio.duration) && audio.duration > 2) {
+      try { audio.currentTime = Math.random() * Math.min(pendingRand, audio.duration - 2); } catch (e) {}
+    }
+    pendingRand = 0;
+  });
   function step(d) {
     const s = stations[cur]; if (!s || !s.tracks.length) return;
     idx = (idx + d + s.tracks.length) % s.tracks.length;

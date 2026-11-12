@@ -1,4 +1,4 @@
-// ILLIAS RADIO — written by make_stations.py. Edit names and mottos freely; rerun to pick up new songs.
+// ILLIAS RADIO — written by make_stations.py. Edit names, mottos and per-track titles/options freely; rerun to pick up new songs.
 window.STATIONS = [
   {
     "folder": "tavern",
@@ -23,8 +23,15 @@ window.STATIONS = [
     "name": "The Court",
     "motto": "grand, solemn, a little pompous",
     "tracks": [
-      "Passionfruit_spotdown.org.mp3",
-      "When You Sleep_spotdown.org.mp3"
+      {
+        "file": "Radhaus - Post-Hardcore Emo Mixtape.m4a",
+        "title": "Radhaus — Emo & Post-Hardcore Mixtape",
+        "rand": 1800
+      },
+      {
+        "file": "When You Sleep.mp3",
+        "title": "When You Sleep"
+      }
     ]
   }
 ];
